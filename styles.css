@@ -1,0 +1,24 @@
+.video-delay-container {
+  position: fixed !important;
+  top: 50% !important;
+  left: 50% !important;
+  transform: translate(-50%, -50%) !important;
+  display: flex !important;
+  justify-content: center !important;
+  align-items: center !important;
+  background-color: black !important;
+  width: 100vw !important;
+  height: 100vh !important;
+}
+
+.video-delay-canvas {
+  position: absolute !important;
+  z-index: 1 !important;
+  object-fit: contain !important;
+}
+
+video {
+  position: relative !important;
+  z-index: 0 !important;
+  object-fit: contain !important;
+}
