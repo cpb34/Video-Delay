@@ -4,7 +4,6 @@
   "version": "1.0",
   "description": "Seamlessly delays fullscreen video. Enjoy synced audio with YouTube, Twitch, Anime sites, and more!",
   "permissions": [
-    "activeTab",
     "storage"
   ],
   "content_scripts": [{
@@ -13,6 +12,7 @@
     "css": ["styles.css"],
     "all_frames": true
   }],
+  "host_permissions": ["<all_urls>"],
   "action": {
     "default_popup": "popup.html"
   },
