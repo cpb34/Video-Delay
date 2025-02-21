@@ -1,5 +1,5 @@
 {
-  "manifest_version": 2,
+  "manifest_version": 3,
   "name": "Video Delay",
   "version": "1.0",
   "description": "Seamlessly delays fullscreen video. Enjoy synced audio with YouTube, Twitch, Anime sites, and more!",
@@ -13,10 +13,10 @@
     "css": ["styles.css"],
     "all_frames": true
   }],
-  "browser_action": {
+  "action": {
     "default_popup": "popup.html"
   },
   "icons": {
-      "256": "icon.png"
+    "256": "icon.png"
   }
 }
