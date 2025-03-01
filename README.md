@@ -19,6 +19,8 @@ Input the desired delay in milliseconds and turn the video delay on. It's that e
 
 ## Release Notes
 
+**v1.1.1** - Minor storage bug fix
+
 **v1.1.0** - Subtitle delay support for videos using the JW Player
 
 **v1.0** - Video delay and UI foundation
