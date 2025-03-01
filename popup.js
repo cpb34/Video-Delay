@@ -4,38 +4,35 @@ document.addEventListener('DOMContentLoaded', () => {
   const toggleText = toggleButton.querySelector('.toggle-text')
 
   function applyDelayToActiveTab(delay, enabled) {
-    try {
-      chrome.tabs.query({active: true, currentWindow: true}, (tabs) => {
-        if (tabs[0] && tabs[0].id) {
-          chrome.tabs.sendMessage(tabs[0].id, {
-            type: 'setDelay',
-            delay: enabled ? delay : 0
-          })
-        }
-      })
-    } catch {
-      // Ignore
-    }
-  }
-  
-  try {
-    chrome.storage.local.get(['delay', 'enabled'], function(result) {
-      if (result.delay !== undefined) {
-        delayInput.value = result.delay
-      }
-  
-      if (result.enabled !== undefined) {
-        toggleButton.classList.toggle('active', result.enabled)
-        toggleText.textContent = result.enabled ? 'ON' : 'OFF'
-        
-        if (result.enabled) {
-          applyDelayToActiveTab(result.delay || 0, true)
-        }
+    chrome.tabs.query({active: true, currentWindow: true}, (tabs) => {
+      if (tabs[0] && tabs[0].id) {
+        chrome.tabs.sendMessage(tabs[0].id, {
+          type: 'setDelay',
+          delay: enabled ? delay : 0
+        }, (response) => {
+          if (chrome.runtime.lastError) {
+            // Ignore
+          }
+        })
       }
     })
-  } catch {
-    // Ignore
   }
+  
+  chrome.storage.local.get(['delay', 'enabled'], function(result) {
+    if (result.delay !== undefined) {
+      delayInput.value = result.delay
+    }
+
+    if (result.enabled !== undefined) {
+      toggleButton.classList.toggle('active', result.enabled)
+      toggleText.textContent = result.enabled ? 'ON' : 'OFF'
+      
+      if (result.enabled) {
+        applyDelayToActiveTab(result.delay || 0, true)
+      }
+    }
+  })
+
 
   toggleButton.addEventListener('click', () => {
     const isEnabled = toggleButton.classList.toggle('active')
