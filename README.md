@@ -9,7 +9,7 @@ This extension is available on the [Chrome Web Store](https://chromewebstore.goo
 
 ### Load Unpacked:
 This extension can be loaded into the browser with the following steps:
-1. Download and unzip `Video Delay v1.1.1`
+1. Download and unzip `Video Delay-1.1.1`
 2. Visit the browser extensions page and turn on Developer mode
 3. Click "Load unpacked"
 4. Select the unzipped folder
