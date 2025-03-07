@@ -1,6 +1,9 @@
 # Video Delay
 
-### Chrome extension that seamlessly delays fullscreen video. Enjoy synced audio with YouTube, Twitch, Anime sites, and more!
+Extension that seamlessly delays fullscreen video. Enjoy synced audio with YouTube, Twitch, Anime sites, and more!
+
+## Usage
+Input the desired delay in milliseconds and turn the video delay on. It's that easy!
 
 ## Installation Guide
 
@@ -9,13 +12,10 @@ This extension is available on the [Chrome Web Store](https://chromewebstore.goo
 
 ### Load Unpacked:
 This extension can be loaded into the browser with the following steps:
-1. Download and unzip `Video Delay v1.1.0`
+1. Download and unzip `Video Delay-1.1.1`
 2. Visit the browser extensions page and turn on Developer mode
 3. Click "Load unpacked"
 4. Select the unzipped folder
-
-## Usage
-Input the desired delay in milliseconds and turn the video delay on. It's that easy!
 
 ## Release Notes
 
