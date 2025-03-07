@@ -1,6 +1,6 @@
 # Video Delay
 
-An extension that seamlessly delays fullscreen video. Enjoy synced audio with YouTube, Twitch, Anime sites, and more!
+Extension that seamlessly delays fullscreen video. Enjoy synced audio with YouTube, Twitch, Anime sites, and more!
 
 ## Installation Guide
 
