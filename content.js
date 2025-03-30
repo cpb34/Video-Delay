@@ -616,15 +616,18 @@ class DelayedVideo {
             
             const content = html.substring(startIndex, endIndex)
             
-            let style = 'normal'
-            let text = content
+            const isBold = content.includes('<b>')
+            const isItalic = content.includes('<i>')
             
-            if (content.match(/<i>.*<\/i>/)) {
-              style = 'italic'
-              text = content.replace(/<\/?i>/g, '')
-            } else if (content.match(/<b>.*<\/b>/)) {
+            let text = content
+            let style = 'normal'
+            
+            if (isBold) {
               style = 'bold'
-              text = content.replace(/<\/?b>/g, '')
+              text = text = text.replace(/<\/?b>/g, '')
+            } else if (isItalic) {
+              style = 'italic'
+              text = text = text.replace(/<\/?i>/g, '')
             }
   
             if (text.includes('\n')) {
