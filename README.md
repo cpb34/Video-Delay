@@ -12,14 +12,16 @@ This extension is available on the [Chrome Web Store](https://chromewebstore.goo
 
 ### Load Unpacked:
 This extension can be loaded into the browser with the following steps:
-1. Download and unzip `Video-Delay-1.1.1`
+1. Download and unzip `Video-Delay-1.1.2`
 2. Visit the browser extensions page and turn on Developer mode
 3. Click "Load unpacked"
 4. Select the unzipped folder
 
 ## Release Notes
 
-**v1.1.1** - Minor storage bug fix
+**v1.1.2** - Subtitle bug fix
+
+**v1.1.1** - Chrome storage bug fix
 
 **v1.1.0** - Subtitle delay support for videos using the JW Player
 
@@ -30,9 +32,9 @@ This extension can be loaded into the browser with the following steps:
 - Video delay is only active while fullscreen
 - Subtitle delay is unsupported for videos not using the JW Player
 - Subtitles are currently burned into the delayed video and are not their own dedicated layer, thus the subtitle quality scales with video resolution and is not fixed as high quality
-- Having browser graphics acceleration enabled can result in screen tearing with TVs
+- Having browser graphics acceleration enabled can result in screen tearing with TVs (Nvidia studio driver may fix this)
 - DRM content is unsupported (use OBS fullscreen preview to delay the entire screen—correctly doing this is complicated)
 
 ## Contributions
 
-If you would like to contribute, feel free to do so! While this release has everything I need, if you would like to add features, optimize the code to reduce CPU/RAM usage, or fix unnoticed bugs, I welcome you to do so! 
+If you would like to contribute, feel free to do so! While everything I need is present, if you would like to add features, optimize the code to reduce CPU/RAM usage, or fix unnoticed bugs, I welcome you to do so!
