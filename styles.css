@@ -1,3 +1,9 @@
+video {
+  position: relative !important;
+  object-fit: contain !important;
+  z-index: 0 !important;
+}
+
 .video-delay-container {
   position: fixed !important;
   top: 50% !important;
@@ -13,12 +19,16 @@
 
 .video-delay-canvas {
   position: absolute !important;
-  z-index: 1 !important;
   object-fit: contain !important;
+  z-index: 1 !important;
 }
 
-video {
-  position: relative !important;
-  z-index: 0 !important;
-  object-fit: contain !important;
+.subtitle-delay-canvas {
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  margin: 0 auto !important;
+  pointer-events: none !important;
+  z-index: 2 !important;
 }

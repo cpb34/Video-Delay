@@ -1,6 +1,8 @@
 # Video Delay
 
-Extension that seamlessly delays fullscreen video. Enjoy synced audio with YouTube, Twitch, Anime sites, and more!
+Extension that Seamlessly delays fullscreen video. Enjoy synced audio with YouTube, Twitch, Anime sites, and more!
+
+Disclaimer: this extension does not work with DRM-protected content.
 
 ## Usage
 Input the desired delay in milliseconds and turn the video delay on. It's that easy!
@@ -8,16 +10,20 @@ Input the desired delay in milliseconds and turn the video delay on. It's that e
 ## Installation Guide
 
 ### Chrome Web Store:
-This extension is available on the [Chrome Web Store](https://chromewebstore.google.com/detail/video-delay/jljinpfbicnefmleipfhlikpcpoaefip) and can be installed like any other extension
+This extension is available on the Chrome Web Store [here](https://chromewebstore.google.com/detail/video-delay/jljinpfbicnefmleipfhlikpcpoaefip) and can be installed like any other extension
 
 ### Load Unpacked:
 This extension can be loaded into the browser with the following steps:
-1. Download and unzip `Video-Delay-1.1.2`
+1. Download and unzip `Video-Delay-1.2.1`
 2. Visit the browser extensions page and turn on Developer mode
 3. Click "Load unpacked"
 4. Select the unzipped folder
 
 ## Release Notes
+
+**v1.2.1** - Subtitle logic changes to allow mid-line style changes
+
+**v1.2.0** - Massive overhaul for better efficiency and subtitle clarity at low resolutions
 
 **v1.1.2** - Subtitle bug fix
 
@@ -29,12 +35,10 @@ This extension can be loaded into the browser with the following steps:
 
 ## Limitations
 
+- DRM content is not supported
 - Video delay is only active while fullscreen
-- Subtitle delay is unsupported for videos not using the JW Player
-- Subtitles are currently burned into the delayed video and are not their own dedicated layer, thus the subtitle quality scales with video resolution and is not fixed as high quality
-- Having browser graphics acceleration enabled can result in screen tearing with TVs (Nvidia studio driver may fix this)
-- DRM content is unsupported (use OBS fullscreen preview to delay the entire screen—correctly doing this is complicated)
+- Subtitle delay is only supported for videos using the JW Player
 
 ## Contributions
 
-If you would like to contribute, feel free to do so! While everything I need is present, if you would like to add features, optimize the code to reduce CPU/RAM usage, or fix unnoticed bugs, I welcome you to do so!
+If you would like to contribute, feel free to do so! If you would like to add features, optimize the code to reduce CPU/RAM/VRAM usage, or fix unnoticed bugs, I welcome you to do so!
