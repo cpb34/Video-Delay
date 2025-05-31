@@ -1,71 +1,82 @@
-class VideoMonitor {
+class Monitor {
   constructor() {
-    this.startVideoMonitor()
+    this.startMonitor()
     this.startEventListeners()
   }
 
-  startVideoMonitor() {
+  startMonitor() {
     try {
-      chrome.storage.local.get(['delay', 'enabled'], (result) => {
+      chrome.storage.local.get(['mode', 'delay', 'enabled'], (result) => {
         this.delay = result.delay || 0
-        if (result.enabled && this.delay > 0) {
+
+        if (result.mode == 'Video' && result.enabled && this.delay > 0) {
           this.setupFullscreenListener()
           this.setupVideoListeners()
-        }
+        } else if (result.mode == 'Audio' && result.enabled && this.delay > 0) {
+          if (!this.delayedAudio) this.delayedAudio = new DelayedAudio(this.delay)
+          else this.delayedAudio.enableDelayedAudio(this.delay)
+        } else if (this.delayedAudio) this.delayedAudio.stopDelayedAudio()
       })
+      
       chrome.runtime.onMessage.addListener((message) => {
-        chrome.storage.local.get(['enabled'], (result) => {
+        chrome.storage.local.get(['mode', 'enabled'], (result) => {
           if (message.type == 'setDelay') {
             this.delay = message.delay || 0
             this.removeFullscreenListener()
             this.removePlayListener()
             this.stopVideoDelay()
-            if (result.enabled && this.delay > 0) {
+
+            if (this.delayedAudio) this.delayedAudio.stopDelayedAudio()
+            
+            if (result.mode == 'Video' && result.enabled && this.delay > 0) {
               this.setupFullscreenListener()
               this.setupVideoListeners()
+            } else if (result.mode == 'Audio' && result.enabled && this.delay > 0) {
+              if (!this.delayedAudio) this.delayedAudio = new DelayedAudio(this.delay)
+              else this.delayedAudio.enableDelayedAudio(this.delay)
             }
           }
         })
       })
-    } catch (error) {
-      // Ignore
-    }
+    } catch {}
   }
 
   startEventListeners() {
     this.videoPlayHandler = (event) => {
       if (this.video) return
+
       this.getFullscreenState((isFullscreen) => {
         if (this.delay == 0) return
+
         const minWidth = window.innerWidth - 10
         const minHeight = window.innerHeight - 10
+
         document.querySelectorAll('video').forEach(video => {
           const rect = video.getBoundingClientRect()
-          if (rect.width >= minWidth || rect.height >= minHeight) {
-            this.video = video
-          }
+
+          if (rect.width >= minWidth || rect.height >= minHeight) this.video = video
         })
-        if (this.video && this.isFullscreen && !this.video.closest('.video-delay-container')) {
-          this.delayedVideo = new DelayedVideo(this.video, this.delay, true)
-        }
+
+        if (this.video && this.isFullscreen && !this.video.closest('.video-delay-container')) this.delayedVideo = new DelayedVideo(this.video, this.delay, true)
       })
     }
     
     this.processFullscreenChange = (event) => {
       const fullscreenElement = document.fullscreenElement
+
       if (!fullscreenElement) {
         this.stopVideoDelay()
         return
       }
-      this.video = fullscreenElement.tagName == 'VIDEO' 
-        ? fullscreenElement 
-        : fullscreenElement.querySelector('video')
+
+      this.video = fullscreenElement.tagName == 'VIDEO' ? fullscreenElement : fullscreenElement.querySelector('video')
+
       if (this.video) {
         this.setFullscreenState(true)
+
         if (!document.fullscreenElement || this.delay == 0) return
-        if (!this.delayedVideo) {
-          this.delayedVideo = new DelayedVideo(this.video, this.delay, false)
-        }
+
+        if (!this.delayedVideo) this.delayedVideo = new DelayedVideo(this.video, this.delay, false)
       }
     }
   }
@@ -84,6 +95,7 @@ class VideoMonitor {
       this.observer.disconnect()
       this.observer = null
     }
+
     this.observer = new MutationObserver(mutations => {
       mutations.forEach(mutation => {
         mutation.addedNodes.forEach(node => {
@@ -92,17 +104,10 @@ class VideoMonitor {
         })
       })
     })
-    this.observer.observe(document.documentElement, {
-      childList: true,
-      subtree: true
-    })
-    document.querySelectorAll('video').forEach(video => {
-      video.removeEventListener('play', this.videoPlayHandler)
-    })
 
-    document.querySelectorAll('video').forEach(video => {
-      this.addPlayListener(video)
-    })
+    this.observer.observe(document.documentElement, { childList: true, subtree: true })
+    document.querySelectorAll('video').forEach(video => { video.removeEventListener('play', this.videoPlayHandler) })
+    document.querySelectorAll('video').forEach(video => { this.addPlayListener(video) })
   }
 
   addPlayListener(video) {
@@ -115,9 +120,8 @@ class VideoMonitor {
       this.observer.disconnect()
       this.observer = null
     }
-    document.querySelectorAll('video').forEach(video => {
-      video.removeEventListener('play', this.videoPlayHandler)
-    })
+
+    document.querySelectorAll('video').forEach(video => { video.removeEventListener('play', this.videoPlayHandler) })
   }
 
   getFullscreenState(callback) {
@@ -126,18 +130,15 @@ class VideoMonitor {
         if (result.hasOwnProperty('isFullscreen')) this.isFullscreen = result.isFullscreen
         callback(this.isFullscreen)
       })
-    } catch {
-      callback(this.isFullscreen)
-    }
+    } catch { callback(this.isFullscreen) }
   }
 
-  setFullscreenState(value) {
-    this.isFullscreen = value
+  setFullscreenState(state) {
+    this.isFullscreen = state
+
     try {
-      chrome.storage.local.set({ isFullscreen: value })
-    } catch {
-      // Ignore
-    }
+      chrome.storage.local.set({ isFullscreen: state })
+    } catch {}
   }
 
   stopVideoDelay() {
@@ -145,13 +146,22 @@ class VideoMonitor {
       this.delayedVideo.stopDelayedVideo()
       this.delayedVideo = null
     }
+
     this.setFullscreenState(false)
   }
 
-  stopVideoMonitor() {
+  stopAudioDelay() {
+    if (this.delayedAudio) {
+      this.delayedAudio.stopDelayedAudio()
+      this.delayedAudio = null
+    }
+  }
+
+  stopMonitor() {
     this.removeFullscreenListener()
     this.removePlayListener()
     this.stopVideoDelay()
+    this.stopAudioDelay()
     this.video = null
     this.delayedVideo = null
   }
@@ -176,27 +186,20 @@ class DelayedVideo {
   }
 
   startEventListeners() {
-    this.video.addEventListener('loadeddata', () => {
-      this.handleVideoDataLoaded()
-    })
-    
-    this.video.addEventListener('resize', () => {
-      this.updateCanvasDimensions()
-    })
-    
-    window.addEventListener('resize', () => {
-      if (document.fullscreenElement) {
-        this.updateCanvasScale()
-      }
-    })
+    this.video.addEventListener('loadeddata', () => { this.handleVideoDataLoaded() })
+    this.video.addEventListener('resize', () => { this.updateCanvasDimensions() })
+    window.addEventListener('resize', () => { if (document.fullscreenElement) this.updateCanvasScale() })
   }
 
   autoplayedFullscreenCheck() {
+    if (!this.isAutoplayed) return
+
     this.fullscreenCheckInterval = setInterval(() => {
-      if (!this.isAutoplayed) return
       const rect = this.video.getBoundingClientRect()
-      const closerToOriginal = (Math.abs(Math.round(rect.height - this.video.offsetHeight)) < (Math.abs(Math.round(rect.height - window.innerHeight)) - 10)) && (Math.abs(Math.round(rect.width - this.video.offsetWidth)) < (Math.abs(Math.round(rect.width - window.innerWidth)) - 10))
-      if (closerToOriginal) {
+      const notFullscreen = (Math.abs(Math.round(rect.height - this.video.offsetHeight)) < (Math.abs(Math.round(rect.height - window.innerHeight)) - 10)) &&
+                            (Math.abs(Math.round(rect.width - this.video.offsetWidth)) < (Math.abs(Math.round(rect.width - window.innerWidth)) - 10))
+      
+      if (notFullscreen) {
         this.isAutoplayed = false
         clearInterval(this.fullscreenCheckInterval)
         this.stopDelayedVideo()
@@ -206,6 +209,7 @@ class DelayedVideo {
 
   setupCanvas() {
     if ((!document.fullscreenElement && !this.isAutoplayed) || !this.video) return
+
     this.container = document.createElement('div')
     this.container.className = 'video-delay-container'
     this.canvas = document.createElement('canvas')
@@ -215,25 +219,23 @@ class DelayedVideo {
     this.subtitleOverlay.className = 'subtitle-delay-canvas'
     this.video.style.opacity = '0'
     this.canvas.style.opacity = '1'
+
     if (!this.canvas) return
-    this.context = this.canvas.getContext('2d', { 
-      alpha: false,
-      willReadFrequently: false
-    })
-    this.offscreenContext = this.offscreenCanvas.getContext('2d', {
-      alpha: false,
-      willReadFrequently: false
-    })
+
+    this.context = this.canvas.getContext('2d', { alpha: false, willReadFrequently: false })
+    this.offscreenContext = this.offscreenCanvas.getContext('2d', { alpha: false, willReadFrequently: false })
+
     if (!this.context) return
-    this.subtitleContext = this.subtitleOverlay.getContext('2d', {
-      alpha: true
-    })
+
+    this.subtitleContext = this.subtitleOverlay.getContext('2d', { alpha: true })
+
     if (this.video.parentNode) {
       this.video.parentNode.insertBefore(this.container, this.video)
       this.container.appendChild(this.video)
       this.container.appendChild(this.canvas)
       this.container.appendChild(this.subtitleOverlay)
     }
+
     if (this.video.videoWidth && this.video.videoHeight) {
       this.canvas.width = this.video.videoWidth
       this.canvas.height = this.video.videoHeight
@@ -241,29 +243,37 @@ class DelayedVideo {
       this.canvas.width = this.video.offsetWidth || 640
       this.canvas.height = this.video.offsetHeight || 360
     }
+
     const dpr = window.devicePixelRatio || 1
     this.subtitleOverlay.width = (this.video.offsetWidth || window.innerWidth) * dpr
     this.subtitleOverlay.height = (this.video.offsetHeight || window.innerHeight) * dpr
     this.subtitleOverlay.style.width = `${this.video.offsetWidth || window.innerWidth}px`
     this.subtitleOverlay.style.height = `${this.video.offsetHeight || window.innerHeight}px`
+
     if (this.subtitleContext) {
       this.subtitleContext.scale(dpr, dpr)
       this.subtitleContext.textRendering = 'geometricPrecision'
       this.subtitleContext.fontKerning = 'normal'
     }
+
     this.updateCanvasScale()
     this.context.imageSmoothingEnabled = false
+
     if (this.subtitleContext) this.subtitleContext.imageSmoothingEnabled = false
+
     if (this.offscreenContext) this.offscreenContext.imageSmoothingEnabled = false
+
     if (this.canvas && this.video) {
       this.canvas.style.opacity = this.delay > 0 ? '1' : '0'
       this.video.style.opacity = this.delay > 0 ? '0' : '1'
     }
+
     this.setupInitialState()
   }
 
   setupInitialState() {
     if (!this.video || !this.context) return
+
     this.context.fillStyle = '#000000'
     this.context.fillRect(0, 0, this.canvas.width, this.canvas.height)
     this.handleVideoDataLoaded()
@@ -271,29 +281,34 @@ class DelayedVideo {
 
   updateCanvasScale() {
     if (!this.video || !this.canvas || !this.canvas.style) return
-    if (this.video.videoWidth && this.video.videoHeight && 
-        (this.canvas.width != this.video.videoWidth || this.canvas.height != this.video.videoHeight)) {
+
+    if (this.video.videoWidth && this.video.videoHeight && (this.canvas.width != this.video.videoWidth || this.canvas.height != this.video.videoHeight)) {
       this.canvas.width = this.video.videoWidth
       this.canvas.height = this.video.videoHeight
       this.context.imageSmoothingEnabled = false
     }
+
     const scale = Math.min(
       window.innerWidth / (this.video.videoWidth || this.video.offsetWidth || 640),
       window.innerHeight / (this.video.videoHeight || this.video.offsetHeight || 360)
     )
+
     const scaledWidth = Math.round((this.video.videoWidth || this.video.offsetWidth || 640) * scale)
     const scaledHeight = Math.round((this.video.videoHeight || this.video.offsetHeight || 360) * scale)
     this.canvas.style.width = `${scaledWidth}px`
     this.canvas.style.height = `${scaledHeight}px`
+
     if (this.video.style) {
       this.video.style.width = `${scaledWidth}px`
       this.video.style.height = `${scaledHeight}px`
     }
+
     const dpr = window.devicePixelRatio || 1
     this.subtitleOverlay.width = scaledWidth * dpr
     this.subtitleOverlay.height = scaledHeight * dpr
     this.subtitleOverlay.style.width = `${scaledWidth}px`
     this.subtitleOverlay.style.height = `${scaledHeight}px`
+    
     if (this.subtitleContext) {
       this.subtitleContext.setTransform(1, 0, 0, 1, 0, 0)
       this.subtitleContext.scale(dpr, dpr)
@@ -304,21 +319,22 @@ class DelayedVideo {
 
   updateCanvasDimensions() {
     if (!this.canvas || !this.video.videoWidth || !this.video.videoHeight) return
+    
     this.updateCanvasScale()
   }
 
   handleVideoDataLoaded() {
     if (!this.video || !this.context || this.video.readyState < 3 || !this.delay) return
+
     const framePromise = this.captureFrame()
+
     if (framePromise) {
       framePromise.then(frame => {
         if (frame) {
           try {
             this.initialFrame = frame
             this.context.drawImage(frame.image, 0, 0, this.canvas.width, this.canvas.height)
-          } catch (e) {
-            // Ignore
-          }
+          } catch {}
         }
       })
     }
@@ -326,104 +342,116 @@ class DelayedVideo {
 
   captureFrame() {
     if (!this.video || (!this.video.videoWidth && !this.video.offsetWidth) || (!this.video.videoHeight && !this.video.offsetHeight) || this.video.readyState < 2) return null
+    
     const captureTimestamp = performance.now()
+    
     try {
       const options = {
         imageOrientation: 'none',
         premultiplyAlpha: 'premultiply',
         colorSpaceConversion: 'none'
       }
+
       return createImageBitmap(this.video, options).then(bitmap => {
         return {
           image: bitmap,
           timestamp: captureTimestamp
         }
       })
-    } catch (e) {
-      return Promise.resolve(null)
-    }
+    } catch { return Promise.resolve(null) }
   }
 
   async startDelayedVideo() {
     if (this.delayedVideo) return
+
     this.delayedVideo = true
     this.videoStartTime = performance.now()
+
     const animationLoop = async (timestamp) => {
       if (!this.delayedVideo) return
+
       const framePromise = this.captureFrame()
+
       if (framePromise) {
         const frame = await framePromise
+
         if (frame) {
           this.frameQueue.push(frame)
           this.processExpiredFrames(timestamp)
         }
       }
+
       if ((timestamp - this.videoStartTime >= this.delay) && this.frameQueue.length > 0) {
         const frameToShow = this.frameQueue[0]
+
         if (this.context && frameToShow && frameToShow.image) {
           this.context.drawImage(frameToShow.image, 0, 0, this.canvas.width, this.canvas.height)
-          if (this.lastRenderedFrame && this.lastRenderedFrame != frameToShow && this.lastRenderedFrame.image) {
-            this.lastRenderedFrame.image.close()
-          }
+          
+          if (this.lastRenderedFrame && this.lastRenderedFrame != frameToShow && this.lastRenderedFrame.image) this.lastRenderedFrame.image.close()
+
           this.lastRenderedFrame = frameToShow
+          
           if (this.subtitleContext) {
             this.subtitleContext.clearRect(0, 0, this.subtitleOverlay.width, this.subtitleOverlay.height)
             this.renderSubtitles(this.subtitleOverlay.width, this.subtitleOverlay.height)
           }
         }
       }
+
       requestAnimationFrame(animationLoop)
     }
+
     requestAnimationFrame(animationLoop)
     this.captureSubtitleData()
   }
 
   processExpiredFrames(timestamp) {
     const cutoffTime = timestamp - this.delay
+    
     if (this.frameQueue.length > 0 && this.frameQueue[0].timestamp < cutoffTime) {
       const oldestFrame = this.frameQueue[0]
-      if (oldestFrame.image && oldestFrame != this.lastRenderedFrame) {
-        try {
-          oldestFrame.image.close()
-        } catch (e) {
-          // Ignore
-        }
-      }
+      
+      if (oldestFrame.image && oldestFrame != this.lastRenderedFrame) try { oldestFrame.image.close() } catch {}
+
       this.frameQueue.shift()
     }
   }
       
   findSubtitles() {
     const captionElements = document.querySelectorAll('[class*="caption"]')
+    
     if (captionElements.length > 0) {
       const visibleCaptions = Array.from(captionElements).filter(element => {
         const styles = window.getComputedStyle(element)
         return styles.display != 'none' && styles.visibility != 'hidden' && styles.opacity != '0'
       })
-      const hasJwCaptions = visibleCaptions.some(element => 
-        element.innerHTML.trim().includes('jw-reset')
-      )
+
+      const hasJwCaptions = visibleCaptions.some(element => element.innerHTML.trim().includes('jw-reset'))
+
       if (!hasJwCaptions) return false
+
       this.subtitleElements = Array.from(visibleCaptions)
       this.startSubtitleTracking()
       return true
     }
+
     return false
   }
 
   startSubtitlePolling() {
     let subtitlesFound = false
+
     this.subtitlePollInterval = setInterval(() => {
       if (!this.delayedVideo || this.video.width != 0 || subtitlesFound) {
         clearInterval(this.subtitlePollInterval)
         this.subtitlePollInterval = null
         return
       }
+
       if (!subtitlesFound) {
         const found = this.findSubtitles()
-        if (found) {
-          subtitlesFound = true
-        }
+
+        if (found) subtitlesFound = true
       }
     }, 100)
   }
@@ -434,32 +462,45 @@ class DelayedVideo {
         opacity: element.style.opacity,
         display: element.style.display
       }
+
       element.style.setProperty('opacity', '0', 'important')
+
       this.hiddenSubtitleElements.push({
         element: element,
         originalStyles: originalStyles
       })
     })
+
     this.captureSubtitleData()
   }
 
   captureSubtitleData() {
     const captureSubtitles = () => {
       if (!this.delayedVideo) return
+
       let lines = []
       let elementIndex = 0
+
       this.subtitleElements.forEach(element => {
         const html = element.innerHTML.trim()
+
         if (html) {
           let startIndex = 0
+
           while (true) {
             startIndex = html.indexOf('plaintext;">', startIndex)
+
             if (startIndex == -1) break
+            
             startIndex += 'plaintext;">'.length
             const endIndex = html.indexOf('</div>', startIndex)
+            
             if (endIndex == -1) break
+            
             let text = html.substring(startIndex, endIndex)
+            
             if (text.includes('&amp;')) text = text.replace(/&amp;/g, '&')
+
             if (text.match(/<[biu]>/)) {
               const parsedSegments = this.parseStyledText(text, elementIndex > 0)
               lines = lines.concat(parsedSegments)
@@ -474,26 +515,31 @@ class DelayedVideo {
                 }
               })
             }
+
             startIndex = endIndex
             elementIndex++
           }
         }
       })
+
       this.currentSubtitleLines = lines
       this.scheduleSubtitleDelay()
       requestAnimationFrame(captureSubtitles)
     }
+
     requestAnimationFrame(captureSubtitles)
   }
   
   parseStyledText(text, needsNewline) {
     let currentText = ''
     let segments = []
+
     let currentSegment = { 
       text: currentText,
       newline: needsNewline,
       styles: { bold: false, italic: false, underlined: false }
     }
+
     for (let i = 0; i < text.length; i++) {
       if (text[i] == '<') {
         if (text.substring(i, i+3) == '<b>' || text.substring(i, i+3) == '<i>' || text.substring(i, i+3) == '<u>') {
@@ -502,9 +548,11 @@ class DelayedVideo {
             currentText = ''
             needsNewline = false
           }
+
           if (text.substring(i, i+3) == '<b>') currentSegment.styles.bold = true
           else if (text.substring(i, i+3) == '<i>') currentSegment.styles.italic = true
           else if (text.substring(i, i+3) == '<u>') currentSegment.styles.underlined = true
+
           i += 2
         } else if (text.substring(i, i+4) == '</b>' || text.substring(i, i+4) == '</i>' || text.substring(i, i+4) == '</u>') {
           if (currentText) {
@@ -512,31 +560,32 @@ class DelayedVideo {
             currentText = ''
             needsNewline = false
           }
+
           if (text.substring(i, i+4) == '</b>') currentSegment.styles.bold = false
           else if (text.substring(i, i+4) == '</i>') currentSegment.styles.italic = false
           else if (text.substring(i, i+4) == '</u>') currentSegment.styles.underlined = false
+          
           i += 3
-        } else {
-          currentText += text[i]
-        }
+        } else currentText += text[i]
       } else if (text[i] == '\n') {
         if (currentText) {
+          while (currentText[currentText.length - 1] == ' ') currentText = currentText.slice(0, -1)
           this.pushSegments(segments, currentText, needsNewline, currentSegment)
           currentText = ''
         }
+
         needsNewline = true
-      } else {
-        currentText += text[i]
-      }
+      } else currentText += text[i]
     }
-    if (currentText) {
-      this.pushSegments(segments, currentText, needsNewline, currentSegment)
-    }
+
+    if (currentText) this.pushSegments(segments, currentText, needsNewline, currentSegment)
+      
     return segments.filter(segment => segment.text.trim())
   }
   
   pushSegments(segments, currentText, needsNewline, currentSegment) {
-    if (needsNewline && currentText[0] == ' ') currentText = currentText.slice(1)
+    while (needsNewline && currentText[0] == ' ') currentText = currentText.slice(1)
+    
     segments.push({
       text: currentText,
       newline: needsNewline,
@@ -550,13 +599,12 @@ class DelayedVideo {
 
   scheduleSubtitleDelay() {
     const currentSubtitleLines = this.currentSubtitleLines
-    setTimeout(() => {
-      this.delayedSubtitleLines = currentSubtitleLines
-    }, this.delay)
+    setTimeout(() => { this.delayedSubtitleLines = currentSubtitleLines }, this.delay)
   }
 
   renderSubtitles(overlayWidth, overlayHeight) {
     if (this.delayedSubtitleLines.length == 0 || !this.subtitleContext) return
+    
     const dpr = window.devicePixelRatio || 1
     this.subtitleContext.clearRect(0, 0, this.subtitleOverlay.width, this.subtitleOverlay.height)
     this.subtitleContext.setTransform(1, 0, 0, 1, 0, 0)
@@ -577,6 +625,7 @@ class DelayedVideo {
     const textColor = 'rgb(255, 255, 255)'
     const logicalLines = []
     let currentLine = []
+
     this.delayedSubtitleLines.forEach(segment => {
       if (segment.newline) {
         currentLine = [segment]
@@ -585,27 +634,32 @@ class DelayedVideo {
         if (currentLine.length == 0) {
           currentLine = [segment]
           logicalLines.push(currentLine)
-        } else {
-          currentLine.push(segment)
-        }
+        } else currentLine.push(segment)
       }
     })
+
     const totalLogicalLines = logicalLines.length
     const verticalPositions = Array(totalLogicalLines).fill(0).map((_, i) => Math.round(baselineY - (totalLogicalLines - 1 - i) * lineSpacing))
+    
     logicalLines.forEach((lineSegments, lineIndex) => {
       const lineY = verticalPositions[lineIndex]
       let totalLineWidth = 0
       const segmentWidths = []
+
       lineSegments.forEach(segment => {
         let fontStyle = ''
+
         if (segment.styles.italic) fontStyle += 'italic '
+
         if (segment.styles.bold) fontStyle += 'bold '
+
         this.subtitleContext.font = `${fontStyle}${fontSize}px Helvetica, sans-serif`
         const textMetrics = this.subtitleContext.measureText(segment.text)
         const segmentWidth = Math.round(textMetrics.width)
         segmentWidths.push(segmentWidth)
         totalLineWidth += segmentWidth
       })
+
       const rectX = Math.round(adjustedWidth / 2 - totalLineWidth / 2 - padding + 4)
       const rectY = Math.round(lineY - fontSize / 1.75 - padding / 2)
       const rectWidth = Math.round(totalLineWidth + padding * 2 - 7)
@@ -613,16 +667,21 @@ class DelayedVideo {
       this.subtitleContext.fillStyle = bgColor
       this.subtitleContext.fillRect(rectX, rectY, rectWidth, rectHeight)
       let currentX = adjustedWidth / 2 - totalLineWidth / 2
+
       lineSegments.forEach((segment, segmentIndex) => {
         const segmentText = segment.text
         const segmentWidth = segmentWidths[segmentIndex]
         let fontStyle = ''
+        
         if (segment.styles.italic) fontStyle += 'italic '
+        
         if (segment.styles.bold) fontStyle += 'bold '
+        
         this.subtitleContext.font = `${fontStyle}${fontSize}px Helvetica, sans-serif`
         this.subtitleContext.textAlign = 'left'
         this.subtitleContext.fillStyle = textColor
         this.subtitleContext.fillText(segmentText, Math.round(currentX), lineY)
+        
         if (segment.styles.underlined) {
           this.subtitleContext.beginPath()
           const underlineY = Math.round(lineY + fontSize * 0.34)
@@ -632,23 +691,29 @@ class DelayedVideo {
           this.subtitleContext.strokeStyle = textColor
           this.subtitleContext.stroke()
         }
+
         currentX += segmentWidth
       })
+
       this.subtitleContext.textAlign = 'center'
     })
+
     this.subtitleContext.restore()
   }
 
   stopDelayedVideo() {
     this.delayedVideo = false
+    
     if (this.subtitleCheckInterval) {
       clearInterval(this.subtitleCheckInterval)
       this.subtitleCheckInterval = null
     }
+
     if (this.subtitlePollInterval) {
       clearInterval(this.subtitlePollInterval)
       this.subtitlePollInterval = null
     }
+
     if (this.hiddenSubtitleElements && this.hiddenSubtitleElements.length > 0) {        
       this.hiddenSubtitleElements.forEach(item => {
         if (item.element) {
@@ -656,45 +721,46 @@ class DelayedVideo {
         
           if (item.originalStyles) {
             Object.entries(item.originalStyles).forEach(([prop, value]) => {
-              if (value != undefined && value != null) {
-                item.element.style[prop] = value
-              }
+              if (value != undefined && value != null) item.element.style[prop] = value
             })
           }
         }
       })
+
       this.hiddenSubtitleElements = []
     }
+
     this.subtitleElements = []
     this.currentSubtitleLines = []
     this.delayedSubtitleLines = []
+    
     for (const frame of this.frameQueue) {
       if (frame && frame.canvas) {
         frame.canvas.width = 0
         frame.canvas.height = 0
       }
-      if (frame && frame.image) {
-        try {
-          frame.image.close()
-        } catch (e) {
-          // Ignore
-        }
-      }
+
+      if (frame && frame.image) try { frame.image.close() } catch {}
     }
+
     this.frameQueue = []
+    
     if (this.initialFrame && this.initialFrame.canvas) {
       this.initialFrame.canvas.width = 0
       this.initialFrame.canvas.height = 0
     }
+
     if (this.video) {
       this.video.style = ''
       this.video.removeAttribute('style')
     }
+
     if (this.container && this.container.parentNode && this.video) {
       const parent = this.container.parentNode
       parent.insertBefore(this.video, this.container)
       this.container.remove()
     }
+
     this.canvas = null
     this.context = null
     this.subtitleOverlay = null
@@ -702,14 +768,153 @@ class DelayedVideo {
     this.container = null
     this.videoStartTime = 0
     this.delay = 0
+    
     if (this.wasAutoplayed) {
       clearInterval(this.fullscreenCheckInterval)
       this.fullscreenCheckInterval = null
       this.wasAutoplayed = false
-      videoMonitor.stopVideoMonitor()
-      videoMonitor.startVideoMonitor()
+      monitor.stopMonitor()
+      monitor.startMonitor()
     }
   }
 }
 
-const videoMonitor = new VideoMonitor()
+class DelayedAudio {
+  constructor(delay) {
+    this.delay = Math.min(delay, 120000) / 1000
+    this.isActive = true
+    this.audioSources = new Map()
+    this.processedElements = new Set()
+    this.setupAudioProcessing()
+  }
+
+  setupAudioProcessing() {
+    this.processExistingElements()
+
+    this.observer = new MutationObserver(mutations => {
+      mutations.forEach(mutation => {
+        mutation.addedNodes.forEach(node => {
+          if (node.nodeType == 1) {
+            if (node.tagName == 'AUDIO' || node.tagName == 'VIDEO') this.processElement(node)
+
+            if (node.querySelectorAll) node.querySelectorAll('audio, video').forEach(element => { this.processElement(element) })
+          }
+        })
+      })
+    })
+
+    this.observer.observe(document.documentElement, { childList: true, subtree: true })
+  }
+
+  processExistingElements() {
+    document.querySelectorAll('audio, video').forEach(element => { this.processElement(element) })
+  }
+
+  processElement(element) {
+    if (this.audioSources.has(element)) {
+      this.updateElementDelay(element)
+      return
+    }
+
+    if (this.processedElements.has(element)) return
+
+    this.processedElements.add(element)
+    
+    const setupElement = () => {
+      try {
+        const context = new AudioContext()
+        const source = context.createMediaElementSource(element)
+        const delayNode = context.createDelay(120)
+        const gainNode = context.createGain()
+        const bypassGain = context.createGain()
+        source.connect(gainNode)
+        source.connect(bypassGain)
+        gainNode.connect(delayNode)
+        delayNode.connect(context.destination)
+        bypassGain.connect(context.destination)
+        
+        this.audioSources.set(element, {
+          context: context,
+          source: source,
+          delayNode: delayNode,
+          gainNode: gainNode,
+          bypassGain: bypassGain
+        })
+        
+        this.updateElementDelay(element)
+        
+        if (context.state == 'suspended') {
+          const resume = () => {
+            context.resume()
+            element.removeEventListener('play', resume)
+            element.removeEventListener('canplay', resume)
+          }
+
+          element.addEventListener('play', resume)
+          element.addEventListener('canplay', resume)
+        }
+      } catch {}
+    }
+
+    if (element.readyState >= 1) setupElement()
+    else element.addEventListener('loadedmetadata', setupElement, { once: true })
+  }
+
+  updateElementDelay(element) {
+    const audioData = this.audioSources.get(element)
+
+    if (!audioData) return
+
+    const { context, gainNode, bypassGain } = audioData
+
+    if (this.delay > 0) {
+      audioData.delayNode.delayTime.value = this.delay
+      gainNode.gain.value = 1.0
+      bypassGain.gain.value = 0.0
+    } else {
+      gainNode.gain.value = 0.0
+      
+      try {
+        audioData.delayNode.disconnect()
+        gainNode.disconnect()
+        const newDelayNode = context.createDelay(120)
+        newDelayNode.delayTime.value = 0
+        gainNode.connect(newDelayNode)
+        newDelayNode.connect(context.destination)
+        audioData.delayNode = newDelayNode
+      } catch {}
+      
+      bypassGain.gain.value = 1.0
+    }
+  }
+
+  updateDelay(newDelay) {
+    this.delay = Math.min(newDelay, 120000) / 1000
+    this.audioSources.forEach((audioData, element) => { this.updateElementDelay(element) })
+  }
+
+  stopDelayedAudio() {
+    this.delay = 0
+    this.audioSources.forEach((audioData, element) => { this.updateElementDelay(element) })
+  }
+
+  enableDelayedAudio(delay) {
+    this.delay = Math.min(delay, 120000) / 1000
+    this.audioSources.forEach((audioData, element) => { this.updateElementDelay(element) })
+    this.processExistingElements()
+  }
+
+  destroy() {
+    this.audioSources.forEach(audioData => { try { if (audioData.context.state == 'closed') audioData.context.close() } catch {} })
+
+    if (this.observer) {
+      this.observer.disconnect()
+      this.observer = null
+    }
+
+    this.audioSources.clear()
+    this.processedElements.clear()
+  }
+}
+
+const monitor = new Monitor()
